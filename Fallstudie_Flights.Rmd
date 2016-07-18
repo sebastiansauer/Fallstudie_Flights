@@ -1,0 +1,341 @@
+---
+title: "Fallstudie zur praktischen Datenanalyse mit `dplyr`"
+author: "Sebastian Sauer"
+date: "18. Juli 2016"
+always_allow_html: yes
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+# Praktische Datenanalyse mit `dplyr`
+
+Das R-Paket `dplyr` ist ein Stargast auf der R-Showbühne; häufig diskutiert in einschlägigen Foren. Mit `dyplr` kann man Daten "verhackstücken" - umformen und aufbereiten ("to wrangle" auf Englisch); "praktische Datenanalyse" ist vielleicht eine gute Bezeichnung. Es finden sich online viele Einführungen, z.B. [hier](https://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html) oder [hier](https://rpubs.com/justmarkham/dplyr-tutorial).
+
+Dieser Text ist *nicht* als Einführung oder Erläuterung gedacht, sondern als Übung, um (neu erworbenen Fähigkeiten) in der praktischen Datenanalyse im Rahmen einer Fallstudie auszuprobieren.
+
+___
+
+Stellen Sie sich folgendes Szenario zur Fallstudie vor: Sie sind Unternehmensberäter bei einer (nach eigenen Angaben) namhaften Gesellschaft. Ihr erster Auftrag führt Sie direkt nach New York City (normal). Ihr Chef hat irgendwie den Eindruck, dass Sie Zahlen- und Computer-affin sind... "Sag mal, schon mal von R gehört?", fragt er mal eines Abends (22h, noch voll bei der Arbeit). "Eine Programmiersprache zur Datenanalyse und -visualisierung", antworten Sie wie aus der Pistole geschossen. Das gefällt Ihrem Chef. "Pass mal auf. Bis morgen brauche ich eine Analyse aller Flüge von NYC, Anzahl, nach Origin, nach Destination.. Du weißt schon...". Natürlich wissen Sie.. "Reicht bis morgen früh um acht", sagt er noch, bevor er das Büro verlässt. 
+
+Ok, also dann sollten wir keine Zeit verlieren...
+
+___
+
+
+
+# Aufgaben (und Lösungen)
+
+
+Laden wir zuerst die nötigen Pakete und Daten; denken Sie daran, dass R-Pakete zuerst installiert werden müssen (einmalig), bevor Sie sie laden können.
+
+
+```{r, message = FALSE}
+# install.packages("nycflights13")
+library(dplyr)
+library(ggplot2) # Diagramme
+data(flights, package = "nycflights13")
+```
+
+
+## Wie viele Flüge starteten in den NYC-Flughäfen in 2013?
+
+
+```{r}
+flights %>%
+  summarise(n_flights = n())
+```
+
+Ah, eine Menge :-).
+
+
+
+## Welche Flughäfen gibt es in NYC? Wie viele Flüge starteten von dort jeweils? 
+
+```{r}
+flights %>%
+  group_by(origin) %>% 
+  summarise(Anzahl = n()) 
+```
+
+Das könnten wir auch plotten. Allerdings... 3 Zahlen, das kann man auch ohne Diagramm gut erkennen...
+
+Die internationalen Codes von Flughäfen können z.B. [hier](https://de.wikipedia.org/wiki/Liste_der_IATA-Codes/A) nachgelesen werden.
+
+
+## Wie viele Flughäfen starteten pro Monat aus NYC?
+
+Das ist praktische die gleiche Frage in grün...
+
+```{r}
+flights %>%
+  group_by(month) %>% 
+  summarise(Anzahl = n()) 
+```
+
+Das lohnt sich schon eher als Diagramm:
+
+```{r}
+flights %>%
+  group_by(month) %>% 
+  summarise(Anzahl = n()) %>% 
+  ggplot(aes(x = month, y = Anzahl)) + geom_point(color = "firebrick") +
+  geom_line()
+```
+
+
+## Welche Ziele wurden angeflogen? Wurden MUC und FRA angeflogen?
+
+```{r}
+flights %>%
+  group_by(dest) %>% 
+  summarise(Anzahl = n()) %>% 
+  select(dest) %>% print(n = 200)
+```
+
+Eine lange Liste... wäre vielleicht übersichtlicher, die *nicht* abzubilden ;)
+
+Schauen wir mal, ob MUC (München) oder FRA (Frankfurt) dabei waren.
+
+```{r}
+flights %>%
+  filter(dest == "MUC" | dest == "FRA")
+```
+
+Die resultierende Tabelle ("tibble") hat 0 Zeilen. Diese Ziele wurden also nicht angeflogen.
+
+Das Zeichen "|" bedeutet "oder" (im logischen Sinne). Demnach kann man die die ganze "Pfeife" so lesen:
+`Nimm flights`
+`Filter Zeilen mit Ziel gleich MUC oder Zeilen mit Ziel gleich FRA`.
+
+
+
+## Welche Ziele am häufigsten angeflogen?
+
+```{r}
+flights %>%
+  group_by(dest) %>%
+  summarise(n_per_dest = n()) %>%
+  arrange(desc(n_per_dest))
+```
+
+
+Das könnte man auch wieder "plotten", aber lieber nur die Top-10.
+
+```{r}
+flights %>%
+  group_by(dest) %>%
+  summarise(n_per_dest = n()) %>%
+  arrange(desc(n_per_dest)) %>% 
+  filter(min_rank(n_per_dest) < 11) %>% 
+  ggplot(aes(x = dest, y = n_per_dest)) + geom_bar(stat = "identity")
+```
+
+Der Befehl `min_rank(n_per_dest) < 11` liefert die 10 kleinsten Rangplätze der Variablen `n_per_dest` zurück. 
+
+Beim Plotten brauchen wir beim Geom `bar` (Balken) den Zusatz `stat = "identity"`, weil das Geom `bar` standardgemäß zählen möchte, wie viele Zeilen z.B. "LGA" enthalten. Wir haben aber das Zählen der Zeilen schon vorher mit `n()` gemacht, so dass der Befehl einfach den Wert, so wie er in unserem Dataframe steht (daher `identity`) nehmen soll.
+
+
+
+## Welche Ziele werden mehr als 10000 Mal pro Jahr angeflogen?
+
+
+```{r}
+flights %>%
+  group_by(dest) %>%
+  summarise(n_dest = n()) %>%
+  filter(n_dest > 10000)
+```
+
+
+
+
+## Welche Flüge gingen von JFK nach PWM (Portland) im Januar zwischen Mitternach und 5 Uhr?
+
+
+```{r}
+library(knitr)
+filter(flights, origin == "JFK" & month == 1, dest == "PWM", dep_time < 500) %>% 
+  kable
+```
+
+
+Der Befehl `knitr::kable` erstellt eine (einigermaßen) schöne Tabelle (man muss aber das Paket `knitr` vorher geladen haben.) 
+
+Warum Ihr Chef *das* wissen will, weiß er nur allein...
+
+
+## Welche Flüge starteten von JFK, dieeine Ankunftsverspätung hatten doppelt so groß wie die Abflugverspätung, und die nach Atlanta geflogen sind?
+
+
+Selten eine Aufgabe gelesen, die aus so einem langen Satz bestand ...
+
+```{r}
+
+filter(flights, origin == "JFK", arr_delay > 2 * dep_delay, month == 1, dest == "ATL") %>% 
+  kable
+```
+
+
+Auch diese Tabelle ist recht lang. Aber sei's drum :)
+
+
+## Welche Airlines hatten die meiste "Netto-Verspätung"?
+
+
+```{r}
+f_2 <- group_by(flights, carrier)
+f_3 <- mutate(f_2, delay = dep_delay - arr_delay)
+f_4 <- filter(f_3, !is.na(delay))
+f_5 <- summarise(f_4, delay_mean = mean(delay))
+arrange(f_5, delay_mean) 
+```
+
+Etwas umständlich mit den ganzen Zwischenspeichern... Vielleicht besser so:
+
+```{r}
+flights %>% 
+  group_by(carrier) %>% 
+  mutate(delay = dep_delay - arr_delay) %>% 
+  filter(!is.na(delay)) %>% 
+  summarise(delay_mean = mean(delay)) %>% 
+  arrange(-delay_mean)
+```
+
+
+Das könnten wir mal wieder visualisieren:
+
+```{r}
+flights %>% 
+  group_by(carrier) %>% 
+  mutate(delay = dep_delay - arr_delay) %>% 
+  filter(!is.na(delay)) %>% 
+  summarise(delay_mean = mean(delay)) %>% 
+  arrange(-delay_mean) -> f_summarised
+
+  ggplot(f_summarised, aes(x = carrier, y = delay_mean)) + geom_point(color = "firebrick") 
+```
+
+`ggplot2` ordnet die X-Achse hier automatisch alphanumerisch. Wenn wir wollen, dass die Achse nach den Werten der Y-Achse (`delay_mean`) geordnet wird (was sinnvoll ist), können wir das so erreichen:
+
+```{r}
+  ggplot(f_summarised, aes(x = reorder(carrier, delay_mean), y = delay_mean)) + 
+    geom_point(color = "firebrick") 
+
+```
+
+Der Befehl `reorder(carrier, delay_mean)` ordnet die Werte der Varialbne `carrier` anhand der Werte der Variablen `delay_mean`.
+
+
+
+## Berechnen Sie die mittlere Verspätung aller Flüge mit deutlicher Verspätung (> 1 Stunde)!
+
+
+```{r}
+
+
+flights %>%
+  mutate(delay = dep_delay - arr_delay) %>% 
+  filter(delay > 60) %>%
+  summarise(delay_mean = mean(delay),
+            n = n()) %>%  # Anzahl
+  arrange(delay_mean)
+```
+
+
+## Wie sind die Verspätungen verteilt?
+
+
+```{r}
+
+ggplot(f_summarised, aes(x = delay_mean)) + geom_histogram()
+```
+
+
+
+
+## Hängen Flugzeit und Verspätung zusammen?
+
+```{r}
+flights %>%
+  mutate(delay = dep_delay - arr_delay) %>% 
+  na.omit() %>% 
+  ggplot(aes(x = distance, y = delay)) + 
+  geom_point(alpha = .1) +
+  geom_smooth()
+```
+
+Sag mal, plotten wir gerade wirklich 300.000 Punkte??? Das kann dauern...
+
+Das `alpha = .1` macht die Punkte blässlich, fast durchsichtig. Ganz praktisch, wenn viele Punkte aufeinander liegen.
+
+
+## Hängen Verspätung und Jahreszeit zusammen?
+
+Auch eine ganz interessante Frage. Schauen wir mal:
+
+```{r}
+
+cor(flights$month, flights$dep_delay, use = "complete") 
+```
+
+
+Das `use = complete` sagt, dass wir Zeilen mit fehlenden Werten ignorieren.
+
+Sieht also nicht nach einem Zusammenhang aus. Das sollte uns ein Diagramm auch bestätigen:
+
+```{r}
+flights %>% 
+  group_by(month) %>% 
+  na.omit() %>%  # alle Zeilen mit fehlenden Werten löschen
+  mutate(delay = dep_delay - arr_delay) %>% 
+  ggplot(aes(x = month, y = delay)) + geom_boxplot()
+```
+
+Upps, das sieht ja komisch aus... Hm..ggplot schlägt vor, wir sollen irgendwie `group` mit reinwursten... Naja, unsere Gruppen könnten die Monate sein. Also probieren wir's mal...
+
+
+
+
+```{r}
+flights %>% 
+  group_by(month) %>% 
+  na.omit() %>%  # alle Zeilen mit fehlenden Werten löschen
+  mutate(delay = dep_delay - arr_delay) %>% 
+  ggplot(aes(x = month, y = delay, group = month)) + geom_boxplot()
+```
+
+
+Die X-Achse sieht noch nicht so toll aus (mit den Nachkommastellen), aber das heben wir uns für eine andere Gelegenheit auf :-)
+
+
+Noch ein kleiner Bonus zum Abschluss: Interaktive Diagramme!
+
+Dazu müssen wir erstmal ein neues Paket laden: `plotly` (und ggf. vorher installieren).
+```{r, message = FALSE}
+# install.packages("plotly")
+library(plotly)
+```
+
+
+`plotly` kann man ein ggplot-Objekt übergeben, welches dann automatisch in ein interaktives Diagramm übersetzt wird. Macht natürlich nur Sinn, wenn man das am Computer anschaut; ausgedruckt ist es dann nicht interaktiv...
+
+
+```{r, warning = FALSE}
+flights %>% 
+  group_by(month) %>% 
+  na.omit() %>%  # alle Zeilen mit fehlenden Werten löschen
+  mutate(delay = dep_delay - arr_delay) %>% 
+  ggplot(aes(x = month, y = delay, group = month, color = month)) + geom_boxplot() -> flights_plot
+
+ggplotly(flights_plot)
+
+```
+
+
+Für heute reicht's!
