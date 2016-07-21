@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 
 # Praktische Datenanalyse mit `dplyr`
 
-Das R-Paket `dplyr` ist ein Stargast auf der R-Showbühne; häufig diskutiert in einschlägigen Foren. Mit `dyplr` kann man Daten "verhackstücken" - umformen und aufbereiten ("to wrangle" auf Englisch); "praktische Datenanalyse" ist vielleicht eine gute Bezeichnung. Es finden sich online viele Einführungen, z.B. [hier](https://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html) oder [hier](https://rpubs.com/justmarkham/dplyr-tutorial).
+Das R-Paket `dplyr` von [Hadley Wickham](https://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html) ist ein Stargast auf der R-Showbühne; häufig diskutiert in einschlägigen Foren. Mit `dyplr` kann man Daten "verhackstücken" - umformen und aufbereiten ("to wrangle" auf Englisch); "praktische Datenanalyse" ist vielleicht eine gute Bezeichnung. Es finden sich online viele Einführungen, z.B. [hier](https://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html) oder [hier](https://rpubs.com/justmarkham/dplyr-tutorial).
 
 Dieser Text ist *nicht* als Einführung oder Erläuterung gedacht, sondern als Übung, um (neu erworbenen Fähigkeiten) in der praktischen Datenanalyse im Rahmen einer Fallstudie auszuprobieren.
 
